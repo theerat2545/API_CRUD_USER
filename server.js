@@ -4,11 +4,14 @@ const app = express()
 const dotenv = require('dotenv');
 const mysql2 = require('mysql2');
 const bcrypt = require('bcrypt');
+const cors = require('cors');
 
 const saltRounds = 10;
 
 dotenv.config();
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(cors());
 
 const port = process.env.PORT
 const conn = mysql2.createConnection({
@@ -105,7 +108,6 @@ app.put('/users/:id', async (req, res) => {
                 return;
             }
 
-            // No need to pass updatedAt from the body, handled by SQL
             let sql = "UPDATE users SET name = ?, gender = ?, age = ?, phone = ?, username = ?, password = ?, updatedAt = CURRENT_TIMESTAMP WHERE id = ?";
             conn.execute(sql, [name, gender, age, phone, username, hash, id], (err, result) => {
                 if (err) {
@@ -117,6 +119,27 @@ app.put('/users/:id', async (req, res) => {
         });
     });
 });
+
+// DELETE USERS
+app.delete('/users/:id', async (req, res) => {
+    const { id } = req.params;
+    let sql = "DELETE FROM users WHERE id = ?";
+
+    await conn.execute(sql, [id], (err, result) => {
+        if (err) {
+            res.status(500).json({ message: err.message });
+            return;
+        }
+
+        if (result.affectedRows === 0) {
+            res.status(404).json({ message: "User not found" });
+            return;
+        }
+
+        res.status(200).json({ message: "Delete data success", data: result });
+    });
+});
+
 
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`)
